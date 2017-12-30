@@ -1,0 +1,186 @@
+Data.Table  R Session
+========================================================
+author: Ramana Reddy  
+date: 4 December 2015
+width: 1700
+height: 1500
+
+data import of csv files with fread from data.table
+========================================================
+```{r}
+library(data.table)
+setwd("E:\\RTraining")
+ptm<-NULL
+ptm <- proc.time()
+DT<-fread("trainData.csv",sep=",",header=TRUE,verbose = FALSE)
+proc.time() - ptm
+```
+
+Since you are dealing with a lot of data, it is recommended that you do a lot of aggregations and stuff using data.table package!!
+
+They say it can deal from 1GB to 100GB of data.
+
+
+Check data overiew 
+========================================================
+
+```{r}
+# get all the column names 
+names(DT)
+
+```
+
+Check data overiew contd..
+========================================================
+
+```{r}
+# get dimensions of the data
+dim(DT)
+# get summary of the data
+summary(DT)
+```
+
+
+slicing the data
+========================================================
+```{r}
+# Select only V1, V2
+subsetdata<-DT[,.(V1,V2)]
+dim(subsetdata)
+head(subsetdata)
+
+# select data where V1>10
+subsetdata<-subsetdata[V1>10]
+dim(subsetdata)
+head(subsetdata)
+
+# use head and tail funtions to view the first and last few rows of the data like in unix/linux
+# tip DT[ Vx %in% c("A","C")] Select all rows that have the value A or C in column Vx
+```
+
+Aggregating of columns sums/means/stand dev. etc.,
+========================================================
+
+```{r}
+# get sum of V1 and stdev of V2 by each value of V7
+
+DT[,.(sum_of_v1_by_v7=sum(V1),std_dev_of_V2_by_v7=sd(V2)), by=V7]
+
+# get sum of V1 and stdev of V2 by each value of V7 and v8
+
+head(DT[,.(sum_of_v1_by_v7=sum(V1),std_dev_of_V2_by_v7=sd(V2)), by=.(V7,V8)])
+
+# ofcourse you can save them to a new data.table by just assigning the above to a data.table
+
+sum_std_of_V1_v2_by_v7_v8<- DT[,.(sum_of_v1_by_v7=sum(V1),std_dev_of_V2_by_v7=sd(V2)), by=.(V7,V8)]
+head(sum_std_of_V1_v2_by_v7_v8)
+
+```
+
+Some cool stuff - pretty useful at times
+========================================================
+
+```{r}
+# adding the maxium of sum(v1) to the above dataset sum_std_of_V1_v2_by_v7_v8
+
+sum_std_of_V1_v2_by_v7_v8<-sum_std_of_V1_v2_by_v7_v8[,max_sum_v1:= max(sum_of_v1_by_v7)]
+head(sum_std_of_V1_v2_by_v7_v8)
+# the above is very useful if you have derive %of total or difference from mean during mdoelling
+
+# Creating two columns now instaed of one. You can create new columns based on existing columns too.
+sum_std_of_V1_v2_by_v7_v8<-sum_std_of_V1_v2_by_v7_v8[,c("max_sum_v1","mean_sum_v1") := list(max(sum_of_v1_by_v7),mean(sum_of_v1_by_v7))]
+head(sum_std_of_V1_v2_by_v7_v8)
+# TIP: DT[,.N,by=V1] gives Count the number of rows for every group in V1.
+# TIP DT[, c("V1","V2") := NULL] Removes columns V1 and V2. 
+# you can also delete the columns creating a parameter variable
+
+columns_to_be_deleted = c("V1","V2")
+DT[,(columns_to_be_deleted) :=NULL ]
+names(DT)
+
+```
+
+
+Keys and Indexes
+========================================================
+
+```{r}
+# Use setkey() to set a key on a DT. The data is sorted on the column we specified by reference
+
+setkey(DT,V4) 
+# now you can use the above key to kind of filter and slice the database real fast
+# lets create a datatable where V4=="N". All you need is just one line. Imagine filtering out a particular account given a set of data whose name is N
+DT_N<-DT["N"]
+dim(DT_N)
+# we can always multiple filters like V4==N OR V4== H
+DT_N<-DT[c("N","H")]
+dim(DT_N)
+
+```
+
+
+
+changing column names and reordering columns
+========================================================
+
+```{r}
+
+
+DT<-fread("trainData.csv",sep=",",header=TRUE,verbose = FALSE)
+
+# Sets the name of column V2 to Rating
+setnames(DT,"V2","Rating") 
+names(DT)
+# Changes two column names. 
+setnames(DT,c("Rating","V3"),c("V2.rating","V3.DataCamp"))
+names(DT)
+# head(DT)
+# select only four columns
+DT<-DT[,.(V2.rating,V1,V4,V3.DataCamp)]
+# Changes the column ordering to the contents of the vector.
+setcolorder(DT,c("V2.rating","V1","V4","V3.DataCamp"))
+head(DT)
+
+```
+
+
+merging tables
+========================================================
+```{r}
+
+# lets merge DT with sum_std_of_V1_v2_by_v7_v8
+# notice in head(), i can give the number of rows i want see,only 2 here
+head(sum_std_of_V1_v2_by_v7_v8,2)
+# lets read DT again  as I changed it before
+DT<-fread("trainData.csv",sep=",",header=TRUE,verbose = FALSE)
+
+# so we need all the columns and rowsin DT but merged with sum_std_of_V1_v2_by_v7_v8
+dim(DT)
+DT<-merge(DT,sum_std_of_V1_v2_by_v7_v8,all.x=TRUE,by = c("V7","V8"))
+# after merge we are adding 4 columns.
+dim(DT)
+head(DT,2)
+
+
+```
+
+
+
+Final things before we wrap up.
+========================================================
+find more stuff here 
+
+https://s3.amazonaws.com/assets.datacamp.com/img/blog/data+table+cheat+sheet.pdf
+
+also try and finsih this course
+
+http://blog.datacamp.com/data-analysis-the-data-table-way-introducing-datacamps-newest-course/
+
+Next session
+
+RMysQL
+
+sapply / lapply 
+
+
+
